@@ -1,22 +1,19 @@
-html {
+html, body {
 	height: 100%;
 }
 
-body {	
+.drawing-canvas {
+	width: 100%;
 	height: 100%;
+	flex: 1;
+	display: flex;
 	justify-content: center;
 	align-items: center;
 	background-repeat: repeat;
 	flex-direction: column;
 }
 
-.drawing {
-	width: 100%;
-	height: 100%;
-	flex: 1;
-}
-
-.controls {
+.drawing-controls {
 	position: fixed;
 	bottom: 0;
 	left: 0;
@@ -25,7 +22,7 @@ body {
 	justify-content: center;
 }
 
-.controls button {
+.drawing-controls button {
 	position: relative;
 	width: 100px;
 	height: 100px;
@@ -36,13 +33,13 @@ body {
 	outline: none;
 }
 
-.controls button.active,
-.controls button:hover {
+.drawing-controls button.active,
+.drawing-controls button:hover {
 	transform: translateY(10%);
 }
 
-.controls button:before,
-.controls button:after {
+.drawing-controls button:before,
+.drawing-controls button:after {
 	display: block;
 	content: '';
 	position: absolute;
@@ -52,31 +49,31 @@ body {
 	height: 100%;
 }
 
-.controls button:before {
+.drawing-controls button:before {
 	-webkit-mask: url("./paw-color.svg") no-repeat 50% 50%;
 }
 
-.controls button:after {
+.drawing-controls button:after {
 	background-color: #111;
 	-webkit-mask: url("./paw-outline.svg") no-repeat 50% 50%;
 }
 
-.controls button.black:before {
+.drawing-controls button.black:before {
 	background-color: #333;
 }
 
-.controls button.white:before {
+.drawing-controls button.white:before {
 	background-color: white;
 }
 
-.controls button.red:before {
+.drawing-controls button.red:before {
 	background-color: red;
 }
 
-.controls button.green:before {
+.drawing-controls button.green:before {
 	background-color: green;
 }
 
-.controls button.blue:before {
+.drawing-controls button.blue:before {
 	background-color: blue;
 }

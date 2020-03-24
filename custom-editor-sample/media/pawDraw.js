@@ -79,7 +79,7 @@
 		}
 
 		_initElements(/** @type {HTMLElement} */ parent) {
-			const colorButtons = /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll('.controls button'));
+			const colorButtons = /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll('.drawing-controls button'));
 			for (const colorButton of colorButtons) {
 				colorButton.addEventListener('click', () => {
 					colorButtons.forEach(button => button.classList.remove('active'));
@@ -89,17 +89,14 @@
 			}
 
 			this.wrapper = document.createElement('div');
-			this.wrapper.className = 'image-wrapper';
 			this.wrapper.style.position = 'relative';
 			parent.append(this.wrapper);
 
 			this.initialCanvas = document.createElement('canvas');
-			this.initialCanvas.className = 'initial-canvas';
 			this.initialCtx = this.initialCanvas.getContext('2d');
 			this.wrapper.append(this.initialCanvas);
 
 			this.drawingCanvas = document.createElement('canvas');
-			this.drawingCanvas.className = 'drawing-canvas';
 			this.drawingCanvas.style.position = 'absolute';
 			this.drawingCanvas.style.top = '0';
 			this.drawingCanvas.style.left = '0';
@@ -117,7 +114,7 @@
 				this.drawingCtx.strokeStyle = this.drawingColor;
 
 				isDrawing = true;
-				document.body.classList.add('drawing');
+				document.body.classList.add('isDrawing');
 				this.drawingCtx.beginPath();
 			});
 
@@ -127,7 +124,7 @@
 				}
 
 				isDrawing = false;
-				document.body.classList.remove('drawing');
+				document.body.classList.remove('isDrawing');
 				this.drawingCtx.closePath();
 
 				const stroke = this.endStroke();
@@ -191,7 +188,7 @@
 		}
 	}
 
-	const editor = new Editor(document.querySelector('.drawing'));
+	const editor = new Editor(document.querySelector('.drawing-canvas'));
 
 	// Handle messages from the extension
 	window.addEventListener('message', async e => {

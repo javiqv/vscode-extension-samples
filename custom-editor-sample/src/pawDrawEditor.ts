@@ -162,9 +162,9 @@ export class PawDrawEditorProvider implements vscode.CustomEditorProvider<PawDra
 				<title>Paw Draw</title>
 			</head>
 			<body>
-				<div class="drawing"></div>
+				<div class="drawing-canvas"></div>
 
-				<div class="controls">
+				<div class="drawing-controls">
 					<button data-color="black" class="black active" title="Black"></button>
 					<button data-color="white" class="white" title="White"></button>
 					<button data-color="red" class="red" title="Red"></button>
