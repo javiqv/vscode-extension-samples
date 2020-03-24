@@ -6,68 +6,79 @@
 	const vscode = acquireVsCodeApi();
 
 	/**
-	 * A drawing stroke
+	 * A drawn line.
 	 */
 	class Stroke {
-		constructor(/** @type {string} */ color, /** @type {Array<[number, number]> | undefined} */ points) {
+		constructor(/** @type {string} */ color, /** @type {Array<[number, number]> | undefined} */ stroke) {
 			this.color = color;
 			/** @type {Array<[number, number]>} */
-			this.points = points || [];
+			this.stroke = stroke || [];
 		}
 
-		add(/** @type {number} */ x, /** @type {number} */ y) {
-			this.points.push([x, y])
+		addPoint(/** @type {number} */ x, /** @type {number} */ y) {
+			this.stroke.push([x, y])
 		}
 	}
 
-	class Model {
-		constructor() {
+	/**
+	 * @param {Uint8Array} initialContent 
+	 * @return {Promise<HTMLImageElement>}
+	 */
+	async function loadImageFromData(initialContent) {
+		const blob = new Blob([initialContent], { 'type': 'image/png' });
+		const url = URL.createObjectURL(blob);
+		try {
+			const img = document.createElement('img');
+			img.crossOrigin = 'anonymous';
+			img.src = url;
+			await new Promise((resolve, reject) => {
+				img.onload = resolve;
+				img.onerror = reject;
+			});
+			return img;
+		} finally {
+			URL.revokeObjectURL(url);
+		}
+	}
+
+	class Editor {
+		constructor( /** @type {HTMLElement} */ parent) {
+			this.ready = false;
+
+			this.drawingColor = 'black';
+
 			/** @type {Array<Stroke>} */
 			this.strokes = [];
 
 			/** @type {Stroke | undefined} */
 			this.currentStroke = undefined;
 
-			/** @type {Array<() => void>} */
-			this.listeners = [];
+			this._initElements(parent);
 		}
 
-		listen(/** @type {() => void} */ listener) {
-			this.listeners.push(listener);
+		addPoint(/** @type {number} */ x, /** @type {number} */ y) {
+			if (this.currentStroke) {
+				this.currentStroke.addPoint(x, y)
+			}
 		}
 
-		begin(color) {
+		beginStoke(/** @type {string} */ color) {
 			this.currentStroke = new Stroke(color);
 			this.strokes.push(this.currentStroke);
 		}
 
-		end() {
+		endStroke() {
 			const previous = this.currentStroke;
 			this.currentStroke = undefined;
-			this.listeners.forEach(x => x());
 			return previous;
 		}
 
-		add(/** @type {number} */ x, /** @type {number} */ y) {
-			if (this.currentStroke) {
-				this.currentStroke.add(x, y)
-			}
+		setStrokes(/** @type {Array<Stroke>} */ strokes) {
+			this.strokes = strokes;
+			this._redraw();
 		}
 
-		setStrokes( /** @type {Array<Stroke>} */ newStrokes) {
-			this.strokes = newStrokes;
-			this.listeners.forEach(x => x());
-		}
-	}
-
-	class View {
-		constructor(
-			/** @type {HTMLElement} */ parent,
-			/** @type {Model} */ model,
-		) {
-			this.ready = false;
-			this.drawingColor = 'black';
-
+		_initElements(/** @type {HTMLElement} */ parent) {
 			const colorButtons = /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll('.controls button'));
 			for (const colorButton of colorButtons) {
 				colorButton.addEventListener('click', () => {
@@ -102,7 +113,7 @@
 					return;
 				}
 
-				model.begin(this.drawingColor);
+				this.beginStoke(this.drawingColor);
 				this.drawingCtx.strokeStyle = this.drawingColor;
 
 				isDrawing = true;
@@ -119,12 +130,12 @@
 				document.body.classList.remove('drawing');
 				this.drawingCtx.closePath();
 
-				const stroke = model.end();
+				const stroke = this.endStroke();
 
 				vscode.postMessage({
 					type: 'stroke',
 					color: this.drawingColor,
-					points: stroke.points,
+					stroke: stroke.stroke,
 				});
 			});
 
@@ -137,20 +148,16 @@
 				const y = e.clientY - rect.top;
 				this.drawingCtx.lineTo(x, y);
 				this.drawingCtx.stroke();
-				model.add(x, y);
-			});
-
-			model.listen(() => {
-				this.redraw(model);
+				this.addPoint(x, y);
 			});
 		}
 
-		redraw(model) {
+		_redraw() {
 			this.drawingCtx.clearRect(0, 0, this.drawingCanvas.width, this.drawingCanvas.height);
-			for (const stroke of model.strokes) {
+			for (const stroke of this.strokes) {
 				this.drawingCtx.strokeStyle = stroke.color;
 				this.drawingCtx.beginPath();
-				for (const [x, y] of stroke.points) {
+				for (const [x, y] of stroke.stroke) {
 					this.drawingCtx.lineTo(x, y);
 				}
 				this.drawingCtx.stroke();
@@ -158,25 +165,16 @@
 			}
 		}
 
-		async drawBackgroundImage(/** @type {Uint8Array} */ initialContent) {
-			const blob = new Blob([initialContent], { 'type': 'image/png' });
-			const url = URL.createObjectURL(blob);
-			const img = document.createElement('img');
-			img.crossOrigin = 'anonymous';
-			img.src = url;
-			await new Promise((resolve, reject) => {
-				img.onload = resolve;
-				img.onerror = reject;
-			});
-
+		setInitialImage(/** @type {HTMLImageElement} */ img) {
 			this.initialCanvas.width = this.drawingCanvas.width = img.naturalWidth;
 			this.initialCanvas.height = this.drawingCanvas.height = img.naturalHeight;
 			this.initialCtx.drawImage(img, 0, 0);
 			this.ready = true;
+			this._redraw();
 		}
 
 		/** @return {Promise<Uint8Array>} */
-		async getData() {
+		async getImageData() {
 			const outCanvas = document.createElement('canvas');
 			outCanvas.width = this.drawingCanvas.width;
 			outCanvas.height = this.drawingCanvas.height;
@@ -193,38 +191,34 @@
 		}
 	}
 
-	const model = new Model();
-	model.listen(() => {
-		updateState({ strokes: model.strokes.map(x => x.points) });
-	});
+	const editor = new Editor(document.querySelector('.drawing'));
 
-	const view = new View(document.querySelector('.drawing'), model);
-	window.addEventListener('message', e => {
-		switch (e.data.type) {
+	// Handle messages from the extension
+	window.addEventListener('message', async e => {
+		const { type, body, requestId } = e.data;
+		switch (type) {
 			case 'init':
-				init(new Uint8Array(e.data.value.data));
-				break;
+				// Load the initial image into the canvas.
+				const initialContent = new Uint8Array(body.value.data);
+				const img = await loadImageFromData(initialContent);
+				editor.setInitialImage(img);
+				return;
 
 			case 'update':
-				model.setStrokes(e.data.edits.map(edit => new Stroke(edit.color, edit.stroke)))
-				break;
+				// Set the drawing strokes.
+				editor.setStrokes(body.edits.map(edit => new Stroke(edit.color, edit.stroke)))
+				return;
+
+			case 'getFileData':
+				// Get the image data for the canvas and post it back to the extension.
+				editor.getImageData().then(data => {
+					vscode.postMessage({ type: 'response', requestId, body: data });
+				});
+				return;
 		}
 	});
 
-	const state = vscode.getState();
-	if (state) {
-		model.setStrokes((state.strokes || []).map(x => new Stroke(x)));
-		init(state.uri);
-	}
-
-	async function init(initialContent) {
-		updateState({ initialContent });
-		await view.drawBackgroundImage(initialContent);
-		view.redraw(model);
-	}
-
-	function updateState(newState) {
-		const s = vscode.getState();
-		vscode.setState({ ...s, ...newState });
-	}
+	// Signal to VS Code that the webview is initilized.
+	vscode.postMessage({ type: 'ready' });
 }());
+

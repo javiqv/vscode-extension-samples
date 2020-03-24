@@ -1,45 +1,51 @@
 // @ts-check
 
-// This script is run within the webview itself
+// Script run within the webview itself.
 (function () {
+
+	// Get a reference to the VS Code webview api.
+	// We use this API to post messages back to our extension.
+
 	// @ts-ignore
 	const vscode = acquireVsCodeApi();
 
-	const notes = /** @type {HTMLElement} */ (document.querySelector('.notes'));
 
-	const add = document.querySelector('.add-button');
-	add.querySelector('button').addEventListener('click', () => {
+	const notesContainer = /** @type {HTMLElement} */ (document.querySelector('.notes'));
+
+	const addButtonContainer = document.querySelector('.add-button');
+	addButtonContainer.querySelector('button').addEventListener('click', () => {
 		vscode.postMessage({
 			type: 'add'
 		});
 	})
 
-	const error = document.createElement('div');
-	document.body.appendChild(error);
-	error.className = 'error'
-	error.style.display = 'none'
+	const errorContainer = document.createElement('div');
+	document.body.appendChild(errorContainer);
+	errorContainer.className = 'error'
+	errorContainer.style.display = 'none'
 
+	/**
+	 * Render the document in the webview.
+	 */
 	function updateContent(/** @type {string} */ text) {
 		let json;
 		try {
 			json = JSON.parse(text);
 		} catch {
-			notes.style.display = 'none';
-			error.innerText = 'Error: Document is not valid json';
-			error.style.display = '';
+			notesContainer.style.display = 'none';
+			errorContainer.innerText = 'Error: Document is not valid json';
+			errorContainer.style.display = '';
 			return;
 		}
-		notes.style.display = '';
-		error.style.display = 'none';
+		notesContainer.style.display = '';
+		errorContainer.style.display = 'none';
 
-		// Reset
-		notes.innerHTML = '';
-
-		// Render notes
+		// Render the scratches
+		notesContainer.innerHTML = '';
 		for (const note of json.scratches || []) {
 			const element = document.createElement('div');
 			element.className = 'note';
-			notes.appendChild(element);
+			notesContainer.appendChild(element);
 
 			const text = document.createElement('div');
 			text.className = 'text';
@@ -55,17 +61,13 @@
 
 			const deleteButton = document.createElement('button');
 			deleteButton.className = 'delete-button';
-			element.appendChild(deleteButton);
-
-			deleteButton.addEventListener('click', (e) => {
-				vscode.postMessage({
-					type: 'delete',
-					id: note.id,
-				});
+			deleteButton.addEventListener('click', () => {
+				vscode.postMessage({ type: 'delete', id: note.id, });
 			});
+			element.appendChild(deleteButton);
 		}
 
-		notes.appendChild(add);
+		notesContainer.appendChild(addButtonContainer);
 	}
 
 	// Handle messages sent from the extension to the webview
@@ -73,9 +75,16 @@
 		const message = event.data; // The json data that the extension sent
 		switch (message.type) {
 			case 'update':
-				updateContent(message.text);
-				vscode.setState({ text: message.text });
-				break;
+				const text = message.text;
+
+				// Update our webview's content
+				updateContent(text);
+
+				// Then persist state information.
+				// This state is returned in the call to `vscode.getState` below when a webview is reloaded.
+				vscode.setState({ text });
+
+				return;
 		}
 	});
 

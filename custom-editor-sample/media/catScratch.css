@@ -34,7 +34,7 @@ body.vscode-dark {
 	font-size: 3em;
 	display: flex;
 	justify-content: center;
-    align-items: center;
+	align-items: center;
 }
 
 .note .created {
@@ -59,7 +59,6 @@ body.vscode-dark {
 	right: 0;
 	display: none;
 }
-
 
 .delete-button:before {
 	content: 'delete';
