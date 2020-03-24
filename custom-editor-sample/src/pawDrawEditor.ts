@@ -269,6 +269,9 @@ export class PawDrawEditorProvider implements vscode.CustomEditorProvider<PawDra
 						stroke: message.stroke,
 					},
 				});
+
+				// Make sure other webviews also know about this
+				this.updateWebviews(document);
 				return;
 
 			case 'response':
