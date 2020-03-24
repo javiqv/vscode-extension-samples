@@ -182,8 +182,18 @@ export class PawDrawEditorProvider implements vscode.CustomEditorProvider<PawDra
 	private readonly _onDidEdit = new vscode.EventEmitter<vscode.CustomDocumentEditEvent<PawDrawEdit>>();
 	public readonly onDidEdit = this._onDidEdit.event;
 
-	save(document: PawDrawDocument, _cancellation: vscode.CancellationToken): Promise<void> {
-		return this.saveAs(document, document.uri);
+	async save(document: PawDrawDocument, _cancellation: vscode.CancellationToken): Promise<void> {
+		await this.saveAs(document, document.uri);
+		
+		// Delete backup on save
+		const backupResource = this.getBackupResource(document.uri);
+		if (backupResource) {
+			try {
+				vscode.workspace.fs.delete(backupResource)
+			} catch {
+				// noop
+			}
+		}
 	}
 
 	async saveAs(document: PawDrawDocument, targetResource: vscode.Uri): Promise<void> {
